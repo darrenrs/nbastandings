@@ -74,6 +74,8 @@ def setupLoad(t):
 		globals()['_SC_TCREATE'] = _CONFIG['Build'].getint('TimestampCreate')
 		globals()['_SC_TUPDATE'] = _CONFIG['Build'].getint('TimestampUpdate')
 		globals()['_SC_BUILD'] = _CONFIG['Build']['VersionString']
+		globals()['_SS_PBCPROG'] = _CONFIG['Visual']['ProgBarIncompleteChar']
+		globals()['_SS_PBCCMPT'] = _CONFIG['Visual']['ProgBarDoneChar']
 		globals()['_SC_TEAMS'] = list()
 		
 		for t in _SC_ALLTEAMIDS: # Loop through all teams
@@ -128,24 +130,9 @@ def updateDataSrc():
 		_FILESIZE = os.path.getsize(_SC_DIRNAME+_SC_DATASRCFN)
 		print('Download completed successfully. ({:.3f} seconds, {:.2f} kB/s)'.format(_ELAPSEDTIME,(_FILESIZE/_ELAPSEDTIME)/1024))
 
-def scenarioSeeds():
-	if _SC_SHOWPB:
-		print('\n')
-		
-		if _SC_GAMESAHEAD > 16 and _SC_SHOWOUTPUT:
-			print('WARNING! With your configuration it might take over an hour to complete.\nPlease consider disabling progress bars or decreasing the games.\n')
-		
-		_PB_BASE2 = ProgressBar('Generating seeds          ...','All seeds generated!\n',2**_SC_GAMESAHEAD,36,'█',' ')
-
-	for b in range(2**_SC_GAMESAHEAD):
-		_SCENSEEDS.append(list(str(bin(b))[2:].zfill(_SC_GAMESAHEAD)))
-		
-		if _SC_SHOWPB:
-			_PB_BASE2.push()
-
 def teamGames(t):
 	if _SC_SHOWPB:
-		_PB_TEAMG = ProgressBar('Processing games          ...','Games to simulate processed!\n',len(list(range(_FGIDXSIMDAY, _CSVLINES))),36,'█',' ')
+		_PB_TEAMG = ProgressBar('Processing games          ...','Games to simulate processed!\n',len(list(range(_FGIDXSIMDAY, _CSVLINES))),36,_SS_PBCCMPT,_SS_PBCPROG)
 
 	for g in range(_FGIDXSIMDAY, _CSVLINES):
 		if len(_TEAMGAMES) < _SC_GAMESAHEAD:
@@ -159,7 +146,7 @@ def teamGames(t):
 
 def currentWinRecords(t):
 	if _SC_SHOWPB:
-		_PB_WINRC = ProgressBar('Processing win records    ...','Win records processed!\n',len(list(range(_FGIDXSSN, _FGIDXSIMDAY))),36,'█',' ')
+		_PB_WINRC = ProgressBar('Processing win records    ...','Win records processed!\n',len(list(range(_FGIDXSSN, _FGIDXSIMDAY))),36,_SS_PBCCMPT,_SS_PBCPROG)
 	
 	for w in range(_FGIDXSSN, _FGIDXSIMDAY): # Loop through all played games
 		if _CSV['team1'][w] == t: # The current team played a home game.
@@ -178,7 +165,15 @@ def currentWinRecords(t):
 
 def allScenarios():
 	if _SC_SHOWPB:
-		_PB_ALLSC = ProgressBar('Computing all scenarios   ...','Scenarios processed!\n',len(_SCENSEEDS),36,'█',' ')
+		_PB_ALLSC = ProgressBar('Computing all scenarios   ...','Scenarios processed!\n',len(_SCENSEEDS),36,_SS_PBCCMPT,_SS_PBCPROG)
+	
+	if len(_TEAMGAMES) < _SC_GAMESAHEAD:
+		tgs = len(_TEAMGAMES)
+	else:
+		tgs = _SC_GAMESAHEAD
+	
+	for b in range(2**tgs):
+		_SCENSEEDS.append(list(str(bin(b))[2:].zfill(tgs)))
 		
 	for g in _SCENSEEDS:
 		winPcts = list()
@@ -194,7 +189,7 @@ def allScenarios():
 			
 def allScenarioProbs():
 	if _SC_SHOWPB:
-		_PB_ALLSP = ProgressBar('Computing scen probs      ...','Scenario probabilities processes!\n',len(_SCENSEEDS),36,'█',' ')
+		_PB_ALLSP = ProgressBar('Computing scen probs      ...','Scenario probabilities processes!\n',len(_SCENSEEDS),36,_SS_PBCCMPT,_SS_PBCPROG)
 	
 	for p in _ALLSCEN:
 		_ALLSCENPROB.append(np.prod(np.array(p)))
@@ -213,7 +208,7 @@ def blankFile(t):
 		
 def writeCsv(t):
 	if _SC_SHOWPB:
-		_PB_WRITE = ProgressBar('Writing to {}.csv        ...'.format(t),'Success!\n',len(_ALLSCENPROB),36,'█',' ')
+		_PB_WRITE = ProgressBar('Writing to {}.csv        ...'.format(t),'Success!\n',len(_ALLSCENPROB),36,_SS_PBCCMPT,_SS_PBCPROG)
 
 	try:
 		with open(_SC_DIRNAME+t+'.csv','a') as f: # Open the file as append.			
@@ -280,8 +275,8 @@ if __name__ == '__main__':
 	
 	_SC_ALLTEAMIDS = ['ATL','BOS','BRK','CHI','CHO','CLE','DAL','DEN','DET','GSW','HOU','IND','LAC','LAL','MEM','MIA','MIL','MIN','NOP','NYK','OKC','ORL','PHI','PHO','POR','SAC','SAS','TOR','UTA','WAS'] # All team IDs
 	_SC_CONFERENCE = [0,0,0,0,0,0,1,1,0,1,1,0,1,1,1,0,0,1,1,0,1,0,0,1,1,1,1,0,1,0] # 0 is Eastern Conference, 1 is Western Conference
-	_SC_DEFAULTSETTINGKEYS = ['_SC_DATASRC','_SC_DATASRCFN','_SC_TEAMS','_SC_GAMESAHEAD','_SC_DODOWNLD','_SC_SHOWOUTPUT','_SC_SHOWPB'] # Default setting keys, in case the config file is nonexistent. Do not change for any reason, or the program will fail.
-	_SC_DEFAULTSETTINGVALS = ['https://projects.fivethirtyeight.com/nba-model/nba_elo.csv','NBADAshared.csv',list(_SC_ALLTEAMIDS),10,True,True,True] # Default setting values, in case the config file is nonexistent. You can manually change these values to specify defaults.
+	_SC_DEFAULTSETTINGKEYS = ['_SC_DATASRC','_SC_DATASRCFN','_SC_TEAMS','_SC_GAMESAHEAD','_SC_DODOWNLD','_SC_SHOWOUTPUT','_SC_SHOWPB','_SS_PBCPROG','_SS_PBCCMPT'] # Default setting keys, in case the config file is nonexistent. Do not change for any reason, or the program will fail.
+	_SC_DEFAULTSETTINGVALS = ['https://projects.fivethirtyeight.com/nba-model/nba_elo.csv','NBADAshared.csv',list(_SC_ALLTEAMIDS),10,True,True,True,'#',' '] # Default setting values, in case the config file is nonexistent. You can manually change these values to specify defaults.
 	_SC_DIRNAME = os.path.dirname(__file__)+'\\' # The running directory
 	
 	_SC_TEAMCOUNT = len(_SC_ALLTEAMIDS) # Constant, the amount of teams
@@ -289,8 +284,8 @@ if __name__ == '__main__':
 	
 	setupConfig() # Pull the config data from the INI file.
 	
-	if _SC_GAMESAHEAD > 20:
-		print('\nYou cannot simulate more than 20 games at a time due to system constraints.')
+	if _SC_GAMESAHEAD > 22:
+		print('\nYou cannot simulate more than 22 games at a time due to system constraints.')
 		exit()
 	
 	if _SC_SHOWOUTPUT: # Only show the intro text if that option is enabled.
@@ -316,11 +311,9 @@ if __name__ == '__main__':
 		else:
 			_FGSET = True
 	_FGIDXSSN = (_CSV['season'].values.tolist()).index(_CSV.iloc[(_CSV['date'].values.tolist()).index(_FIRSTSIMDAY)]['season']) # The index of the first game on the season.
-	_SCENSEEDS = list() # Contains all individual scenarios
-	
-	scenarioSeeds()
 	
 	for t in _SC_TEAMS:
+		_SCENSEEDS = list() # Contains all individual scenarios
 		_CURRECORD = [0,0] # The current record of the team. Index 0 is the wins, index 1 is the losses.
 		_TEAMGAMES = list() # Lists all game IDs that are to be played by the team and their win probabilities.
 		_ALLSCEN = list() # Contains all individual scenarios.
